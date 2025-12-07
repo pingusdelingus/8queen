@@ -1,15 +1,34 @@
 #include <iostream>
 
+
 class Board
 {
-  public:
 
-    Board(int len){
-       
+public:
+
+  int rep[BOARD_SIZE];
+  int fitness;
+  Board(int* list, int len)
+  {
+    for (int i = 0; i < BOARD_SIZE && i < len; i++){
+      this->rep[i] = list[i];
+    }
+    //this->fitness = fitnessFunction( this->rep, len);
+  }// end of constructor
+  //
+  //
+  
+  int getFitness(){
+    return this->fitness;
   }
 
+  int* getRep(){
+    return this->rep;
+  }
+
+
+
+
+
 private:
-  int rep[];
-
-
 }; // end of Board Class

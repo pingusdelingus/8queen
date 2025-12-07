@@ -10,8 +10,9 @@
 
 const int BOARD_SIZE = 8;
 const int POP_SIZE = 10000;
-static int board[BOARD_SIZE];
+//static int board[BOARD_SIZE];
 
+#include "./Board.cpp"
 
 
 void printBoard(int b[], int len)
@@ -32,6 +33,21 @@ void printBoard(int b[], int len)
 //
 // board representation works as follows:
 // ex: 3,0,1 means a queen in the first col, 3 rows down, NO queen in second col, and a queen in the 3rd col, first row.
+
+
+
+void fillBoardRandomly(int* board, int len, std::mt19937* gen, std::uniform_int_distribution<int>* dis)
+{
+  auto distribution = *dis;
+  std::cout << "setup dist" << std::endl;
+  for (int index = 0; index < len; index++){
+    board[index] = distribution(*gen);
+  }
+}// end of fillBoardRandomly 
+
+
+
+
 int fitnessFunction(int* board, int len)
 {
   int conflictCount = 0;
@@ -64,74 +80,53 @@ int fitnessFunction(int* board, int len)
 
 }// end of fitness fucnction
 
-void fillBoardRandomly(int* board, int len, std::mt19937* gen, std::uniform_int_distribution<int>* dis)
-{
-  auto distribution = *dis;
-
-  for (int index = 0; index < len; index++){
-    board[index] = distribution(*gen);
-  }
-}// end of fillBoardRandomly 
-
-
-std::function<bool(const int*, const int*)> compare_fitness=
-         [](const int* a, const int* b){
-    return a[9] > b[9];
-  };
-
-
 int main(void )
 {
-  int min_val = 0;
+  int min_val = 1;
   int max_val = BOARD_SIZE;
+  
   unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+  
   std::mt19937 generator(seed);
   std::uniform_int_distribution<int> distribution(min_val, max_val);
   
-  std::uniform_real_distribution<float> u_0_1(0.0f, 1.0f);
 
 
- //testing 
 
-//  printBoard(board);
-  //std::cout << fitnessFunction(board) << std:: endl;
-
-
- std::cout << "filling in board randomly" << std::endl;
-
-
-//  board = printBoard(board);
-
-//  std::cout << fitnessFunction(board) << std:: endl;
-
-int population[POP_SIZE][BOARD_SIZE + 1];
 
   std::cout << "initializing population " << std::endl;
+  Board* population = (Board* ) malloc(sizeof(Board ) * POP_SIZE);
+
 
   for (int index = 0; index < POP_SIZE; index++){
-      
-    int* curr = &population[index][0];
-    fillBoardRandomly(curr, BOARD_SIZE, &generator, &distribution);
-    curr[BOARD_SIZE + 1] = fitnessFunction(curr, BOARD_SIZE);
-  }
+    Board curr = population[index];
+    std::cout << "grabbed curr " << std::endl;
 
-  for (int i = 0; i < POP_SIZE; i++){
-    std::cout << "\n";
-    printBoard(&population[i][0], BOARD_SIZE);
-    std::cout << "board fitness is : " << population[i][9] << std::endl;
-  }
+    // this function call is seg faulting 
+    fillBoardRandomly( (int*) curr.rep , BOARD_SIZE, &generator, &distribution);
+    printBoard(curr.rep, BOARD_SIZE);
+    curr.fitness = fitnessFunction(curr.rep, BOARD_SIZE);
+  }// end of for 
+  
+  std::cout << "finished initializing" << std::endl;
 
+  //test to see it work
+ 
+ 
+  // SL <= GL 
+  // GL (2, R ); 
+  // SL (2, R );
 
   // we sort our population from smallest to largest
-  std::sort(population[0][0], population[POP_SIZE][0], &compare_fitness);
+    std::sort(population[0], population[POP_SIZE], [](const Board& a, const Board& b){return a.getFitness() < b.getFitness();});
+ 
+    
+  for (int index = 0; index < POP_SIZE; index++){
+        std::cout << population[index] << ", fitness: " << population[index].getFitness() << "\n";
+  }// end of for 
   
 
-  for (int i = 0; i < POP_SIZE; i++){
-    std::cout << "\n";
-    printBoard(&population[i][0], BOARD_SIZE);
-    std::cout << "board fitness is : " << population[i][9] << std::endl;
-  }
+  free(population);
+  return 0;
 
-
-//  return 0;
-}// end of main
+} // end of main
