@@ -5,6 +5,29 @@ class Board
 {
 
 public:
+ 
+  bool operator>(const Board& other){
+    return (fitness > other.fitness);
+  }
+  bool operator<(const Board& other){
+    return (fitness < other.fitness);
+  }
+
+  bool operator+(const Board& other){
+    return (fitness + other.fitness);
+  }
+  
+  bool operator!=(const Board& other){
+    return (fitness != other.fitness);
+  }
+
+  bool operator-(const Board & other){
+    return (fitness - other.fitness);
+  }
+
+  bool operator==(const  Board& other){
+    return (fitness == other.fitness );
+  }
 
   int rep[BOARD_SIZE];
   int fitness;

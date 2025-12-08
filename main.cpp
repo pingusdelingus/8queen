@@ -46,8 +46,6 @@ void fillBoardRandomly(int* board, int len, std::mt19937* gen, std::uniform_int_
 }// end of fillBoardRandomly 
 
 
-
-
 int fitnessFunction(int* board, int len)
 {
   int conflictCount = 0;
@@ -80,6 +78,7 @@ int fitnessFunction(int* board, int len)
 
 }// end of fitness fucnction
 
+
 int main(void )
 {
   int min_val = 1;
@@ -110,21 +109,19 @@ int main(void )
   
   std::cout << "finished initializing" << std::endl;
 
-  //test to see it work
- 
- 
-  // SL <= GL 
   // GL (2, R ); 
   // SL (2, R );
+  // SL <= GL 
 
   // we sort our population from smallest to largest
-    std::sort(population[0], population[POP_SIZE], [](const Board& a, const Board& b){return a.getFitness() < b.getFitness();});
+  std::sort(population[0], population[POP_SIZE], []( Board* a,  Board* b){return a->getFitness() < b->getFitness();});
  
-    
+
   for (int index = 0; index < POP_SIZE; index++){
-        std::cout << population[index] << ", fitness: " << population[index].getFitness() << "\n";
+      printBoard(population[index].rep , BOARD_SIZE);
+      std::cout <<  ", fitness: " << population[index].getFitness() << "\n";
   }// end of for 
-  
+ 
 
   free(population);
   return 0;
