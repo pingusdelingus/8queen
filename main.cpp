@@ -11,6 +11,9 @@
 const int BOARD_SIZE = 8;
 const int POP_SIZE = 10000;
 //static int board[BOARD_SIZE];
+const int SMART_MUTATE_ONLY = 1;
+
+
 
 #include "./Board.cpp"
 
@@ -180,35 +183,27 @@ Board* next_gen = (Board*) calloc(sizeof(Board), POP_SIZE);
     int generations = 100; // Define how long you want to evolve
 
     for (int g = 0; g < generations; g++) {
-        // 1. Sort the current population (Smallest fitness at the front)
-        // Note: Ensure your comparator returns (a - b) for ascending order
         std::qsort(population, POP_SIZE, sizeof(Board), comparator);
 
-        // Check if we found a solution (Fitness 0)
         if (population[0].fitness == 0) {
             std::cout << "Solution found in generation " << g << "!" << std::endl;
             printBoard(population[0].rep, BOARD_SIZE);
             break;
         }
 
-        // 2. Elitism: Keep the best board exactly as it is
         next_gen[0] = population[0];
 
-        // 3. Fill the rest of the next generation
         for (int i = 1; i < POP_SIZE; i++) {
-            // Selection: Pick two parents from the top 10% of the population
             int parentA_idx = i % (POP_SIZE / 10); 
             int parentB_idx = (i + 1) % (POP_SIZE / 10);
 
-            // Choose which mutation/crossover to use
-            if (i % 2 == 0) {
+            if (SMART_MUTATE_ONLY ) {
                 smart_mutate(&next_gen[i], &population[parentA_idx], &population[parentB_idx]);
             } else {
                 mutate(&next_gen[i], &population[parentA_idx], &population[parentB_idx], &generator, &distribution);
             }
         }
 
-        // 4. Move next_gen to population (Deep copy or pointer swap)
         for (int i = 0; i < POP_SIZE; i++) {
             population[i] = next_gen[i];
         }
