@@ -6,7 +6,7 @@
 #include <algorithm>
 #include <vector>
 #include <functional>
-
+#include <numeric>
 
 const int BOARD_SIZE = 8;
 const int POP_SIZE = 10000;
@@ -14,6 +14,9 @@ const int POP_SIZE = 10000;
 
 #include "./Board.cpp"
 
+void smart_mutate(Board* output, Board* mother, Board* father);
+
+void mutate(Board* out, Board* mom, Board* dad, std::mt19937* gen, std::uniform_int_distribution<int>* dis );
 
 void printBoard(int b[], int len)
 {
@@ -78,6 +81,41 @@ int fitnessFunction(int* board, int len)
 
 }// end of fitness fucnction
 
+typedef int32_t i32;
+
+
+extern "C" int comparator(const void* a, const void * b){
+  const Board* b_a = static_cast<const Board*> (a) ;
+  const Board* b_b = static_cast<const Board*> (b );
+
+
+  if (b_a->fitness < b_b->fitness) return -1;
+    if (b_a->fitness > b_b->fitness) return 1;
+    return 0;
+}
+
+int getValidSolutionIndex(Board* pop, int size, bool startFromFront)
+{
+  if (startFromFront){
+    for (int i = 0; i < size; i++){
+      Board curr = pop[i];
+      if (curr.fitness == 0){
+        return i;
+      }
+    }// end of for
+    return -1;
+  }// end of startFromFront
+  
+  for (int i = size; i > 0; i--){
+      Board curr = pop[i];
+      if (curr.fitness == 0){
+        return i;
+      }
+  }// end of for 
+  return -1;
+
+}
+
 
 int main(void )
 {
@@ -88,22 +126,18 @@ int main(void )
   
   std::mt19937 generator(seed);
   std::uniform_int_distribution<int> distribution(min_val, max_val);
-  
-
-
-
 
   std::cout << "initializing population " << std::endl;
-  Board* population = (Board* ) malloc(sizeof(Board ) * POP_SIZE);
-
+  Board* population = (Board* ) calloc(sizeof(Board ), POP_SIZE);
+  
 
   for (int index = 0; index < POP_SIZE; index++){
-    Board curr = population[index];
+    Board& curr = population[index];
     std::cout << "grabbed curr " << std::endl;
 
     // this function call is seg faulting 
-    fillBoardRandomly( (int*) curr.rep , BOARD_SIZE, &generator, &distribution);
-    printBoard(curr.rep, BOARD_SIZE);
+    fillBoardRandomly( curr.rep , BOARD_SIZE, &generator, &distribution);
+  //  printBoard(curr.rep, BOARD_SIZE);
     curr.fitness = fitnessFunction(curr.rep, BOARD_SIZE);
   }// end of for 
   
@@ -114,16 +148,148 @@ int main(void )
   // SL <= GL 
 
   // we sort our population from smallest to largest
-  std::sort(population[0], population[POP_SIZE], []( Board* a,  Board* b){return a->getFitness() < b->getFitness();});
- 
+  qsort(population ,POP_SIZE,  sizeof(population[0]),  comparator ) ; // this isn't working as intended
+
+
+
+  std::cout << "finished sorting  \n";  
 
   for (int index = 0; index < POP_SIZE; index++){
+      if (population[index].fitness == 0){
+      std::cout << "fintess is zero ?? skipping.. \n";
+      continue;
+    }
       printBoard(population[index].rep , BOARD_SIZE);
       std::cout <<  ", fitness: " << population[index].getFitness() << "\n";
   }// end of for 
- 
+
+
+  int validIndex = getValidSolutionIndex(population, POP_SIZE, false);
+
+  if (validIndex == -1 ){
+    std::cout << "No Solution found \n";
+  }
+
+  std::cout << "Smallest (best) fitness is : " << std::endl;
+
+    printBoard(population[POP_SIZE - 1].rep, BOARD_SIZE); 
+      std::cout <<  ", fitness: " << population[POP_SIZE -1].getFitness() << "\n";
+  std::cout << std::endl;
+
+Board* next_gen = (Board*) calloc(sizeof(Board), POP_SIZE);
+    int generations = 100; // Define how long you want to evolve
+
+    for (int g = 0; g < generations; g++) {
+        // 1. Sort the current population (Smallest fitness at the front)
+        // Note: Ensure your comparator returns (a - b) for ascending order
+        std::qsort(population, POP_SIZE, sizeof(Board), comparator);
+
+        // Check if we found a solution (Fitness 0)
+        if (population[0].fitness == 0) {
+            std::cout << "Solution found in generation " << g << "!" << std::endl;
+            printBoard(population[0].rep, BOARD_SIZE);
+            break;
+        }
+
+        // 2. Elitism: Keep the best board exactly as it is
+        next_gen[0] = population[0];
+
+        // 3. Fill the rest of the next generation
+        for (int i = 1; i < POP_SIZE; i++) {
+            // Selection: Pick two parents from the top 10% of the population
+            int parentA_idx = i % (POP_SIZE / 10); 
+            int parentB_idx = (i + 1) % (POP_SIZE / 10);
+
+            // Choose which mutation/crossover to use
+            if (i % 2 == 0) {
+                smart_mutate(&next_gen[i], &population[parentA_idx], &population[parentB_idx]);
+            } else {
+                mutate(&next_gen[i], &population[parentA_idx], &population[parentB_idx], &generator, &distribution);
+            }
+        }
+
+        // 4. Move next_gen to population (Deep copy or pointer swap)
+        for (int i = 0; i < POP_SIZE; i++) {
+            population[i] = next_gen[i];
+        }
+
+        if (g % 10 == 0) std::cout << "Gen " << g << " Best Fitness: " << population[0].fitness << std::endl;
+    }
+
+    free(next_gen);
+
 
   free(population);
   return 0;
-
 } // end of main
+
+
+void mutate(Board* out, Board* mom, Board* dad, std::mt19937* gen, std::uniform_int_distribution<int> *dis )
+{
+    auto dist = *dis;
+
+    int splitIndex =  dist(*gen);
+
+    for(int i = 0; i < BOARD_SIZE; i++){
+    if (i <= splitIndex){
+      out->switchRepAt(i, mom->rep[i]);
+    }else{
+      out->switchRepAt(i, dad->rep[i]);
+    }
+  }
+   out->fitness = fitnessFunction(out->rep, BOARD_SIZE); 
+}// end of mutate
+
+
+// try to "mix" mother and father to make a better child
+// but using fitness as heuristic for adding, not ramdomness
+void smart_mutate(Board* output, Board* mother, Board* father)
+{
+  // assume output is zero'd output 
+  // start with "better" (lower) fitness value 
+  if (mother->fitness < father->fitness){
+
+    *output = *mother; // copy (hopefully)
+   
+   for (int i = 0; i < BOARD_SIZE; i++){
+      // try output new val 
+    int prevRepEntry = mother->rep[i];
+    int prevFitness = output->fitness; // original mom's fitness 
+      // try 0th from dad into moms copy inside of output
+      
+      output->switchRepAt(i, father->rep[i]);
+      output->fitness = fitnessFunction(output->rep, BOARD_SIZE);
+    
+      if (output->fitness > prevFitness){
+        //revert and go next
+        output->switchRepAt(i, prevRepEntry);
+        output->fitness = prevFitness;
+      }
+
+    }// end of for loop 
+  }else if (father->fitness >= mother->fitness){
+
+      *output = *father;
+
+   for (int i = 0; i < BOARD_SIZE; i++){
+      // try output new val 
+    int prevRepEntry = father->rep[i];
+    int prevFitness = output->fitness; // original dads's fitness 
+      // try 0th from dad into moms copy inside of output
+      
+      output->switchRepAt(i, mother->rep[i]);
+      output->fitness = fitnessFunction(output->rep, BOARD_SIZE);
+    
+      if (output->fitness > prevFitness){
+        //revert and go next
+        output->switchRepAt(i, prevRepEntry);
+        output->fitness = prevFitness;
+      }
+
+    }// end of for loop 
+
+
+  }
+
+}// end of smart_mutate
+

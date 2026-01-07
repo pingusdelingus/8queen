@@ -40,7 +40,17 @@ public:
   }// end of constructor
   //
   //
-  
+
+  void switchRepAt(int where, int newVal)
+  {
+    if ( where >= 0 && where < BOARD_SIZE){
+    rep[where] = newVal; 
+    }else{
+      std::cout << "problem in switchRepAt \n";
+    }
+
+  }// end of switchRepAt
+
   int getFitness(){
     return this->fitness;
   }
